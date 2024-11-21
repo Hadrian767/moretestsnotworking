@@ -7,7 +7,7 @@ permissions:
 
 env:
   PROJECT_NAME: PsychEngine
-  REPO_PATH: MobilePorting/FNF-PsychEngine-Mobile
+  REPO_PATH: Hadrian767/moretestsnotworking
 
 jobs:
   get-commit-hash:
