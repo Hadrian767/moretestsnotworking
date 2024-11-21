@@ -1,0 +1,143 @@
+local pauseDisabled = false;
+local instances = {
+};
+local state = 'ut_pause';
+function onCreatePost()
+	luaDebugMode = true;
+	pauseDisabled = getPropertyFromClass('states.PlayState', 'chartingMode') or songName == 'Undertale Mix';
+	setProperty('canPause', pauseDisabled);
+	precacheSound('uwa');
+end
+
+function onGameOver()
+	pauseDisabled = true;
+end
+
+function onUpdate()
+	if getProperty('controls.PAUSE') then
+		if not pauseDisabled then
+			openCustomSubstate('ut_pause', true);
+		end
+	end
+end
+
+local option = 1;
+local options = {
+	'resume',
+	'restart',
+	'exit'
+};
+function onCustomSubstateCreate(n)
+	if n == state then
+		playSound('uwa', 0, 'theme'); soundFadeIn('theme', 10.5, 0, 0.5);
+	
+		makeLuaGraphic('bg_p', nil, nil, screenWidth, screenHeight, nil);
+		screenCenter('bg_p');
+		
+		createTextInstance('songTxt', '- ' .. songName:upper(), 324, 196, screenWidth, 'dtmsans.otf', 'FFFFFF');
+		
+		makeLuaSprite('note', 'musicnote', getProperty('songTxt.x') - 51, getProperty('songTxt.y'));
+		scaleObject('note', 3, 3);
+		insertToCustomSubstate('note');
+		
+		local text = 'SCORE: ' .. getProperty('songScore') .. '    MISSES: ' .. getProperty('songMisses') .. '    DEATHS: ' .. getPropertyFromClass('states.PlayState', 'deathCounter');
+		createTextInstance('song_info', text, 0, 10, screenWidth, 'dtmsans.otf', 'FFFFFF'); 
+		startTween('slide', 'song_info', {x = 900}, 5, {ease = 'linear', type = 'PINGPONG'});
+		
+		for i,o in ipairs(options) do
+			local tag = i .. 'option_t';
+			createTextInstance(tag, o:upper(), getProperty('songTxt.x') + 89, getProperty('songTxt.y') + (63 * i) + 62, screenWidth, 'dtmsans.otf', 'FFFFFF');
+			setProperty(tag .. '.borderSize', 0);
+			setProperty(tag .. '.size', 40);
+			setProperty(tag .. '.ID', i);
+		end
+		
+		selectedOption();
+	end
+end
+
+local props = {
+	{'bg_p.alpha', 0.6},
+	{'songTxt.size', 40},
+	{'songTxt.borderSize', 0},
+	{'song_info.alignment', 'center'},
+	{'song_info.borderSize', 0},
+	{'song_info.size', 40},
+	{'note.antialiasing', false}
+};
+function onCustomSubstateCreatePost(n)
+	if n == state then
+		for i,p in ipairs(props) do
+			setProperty(p[1], p[2]);
+		end
+	end
+end
+
+function onCustomSubstateUpdate(n)
+	if n == state then
+		if getProperty('controls.UI_UP_P') then
+			selectedOption(-1);
+		elseif getProperty('controls.UI_DOWN_P') then
+			selectedOption(1);
+		elseif getProperty('controls.ACCEPT') then
+			playSound('select', 1);
+			local selected = options[option]:lower();
+			closeCustomSubstate('ut_pause');
+			if selected == 'restart' then
+				restartSong();
+			elseif selected == 'exit' then
+			exitSong();
+			end
+		end
+	end
+end
+
+function onSoundFinished(t)
+	if t == 'theme' then
+		playSound('uwa', 0.5, 'theme');
+	end
+end
+
+function onCustomSubstateDestroy(n)
+	if n == state then
+		stopSound('theme');
+		for i,instance in ipairs(instances) do
+			removeInstance(instance);
+		end
+	end
+end
+
+function makeLuaGraphic(tag, x, y, width, height, color)
+	makeLuaSprite(tag, nil, x, y);
+	makeGraphic(tag, width, height, (color ~= nil and color or '000000'));
+	insertToCustomSubstate(tag);
+end
+
+function removeInstance(obj)
+	callMethod('variables.remove', {obj});
+end
+
+function createTextInstance(tag, text, x, y, width, font, color)
+	createInstance(tag, 'flixel.text.FlxText', {x, y, width, text});
+	setProperty(tag .. '.color', getColorFromHex(color));
+	setProperty(tag .. '.font', callMethodFromClass('backend.Paths', 'font', {font}))
+	insertToCustomSubstate(tag);
+	table.insert(instances, tag);
+end
+
+function selectedOption(add)
+	if add ~= nil then playSound('squeak', 1); option = option + add; end
+	if option > #options then
+		option = 1;
+	elseif option < 1 then
+		option = #options;
+	end
+	for i,o in ipairs(options) do
+		local tag = i .. 'option_t';
+		if getProperty(tag .. '.ID') == option then
+			setProperty(tag .. '.color', getColorFromHex('FFFF00'));
+		else
+			setProperty(tag .. '.color', getColorFromHex('FFFFFF'));
+		end
+	end
+end
